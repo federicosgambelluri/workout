@@ -312,12 +312,58 @@
     </div>
 
     <script>
-        // Simulazione dati basata sulla struttura Excel analizzata
+        // URL del tuo Google Apps Script - SOSTITUISCI CON IL TUO URL COMPLETO
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwRtK7PQH8HkPS9aoS2y-IArmgk6Slpj3i2666oZ1K1q8I-hJto6PynS-b4V8dLLY.../exec';
+        
+        // Cache locale dei dati (si aggiorna dal foglio Google)
         const workoutData = {
             FASE1: {
                 title: "PROGRAMMA FASE 1: Lavoro tecnico + Progressione carichi + Lavoro su intensità percepita (DURATA 8/12 sett.)",
                 weeks: 8,
-                exercises: [
+                exercises: [],
+                loaded: false
+            },
+            FASE2: {
+                title: "PROGRAMMA FASE 2: Lavoro tecnico + Aumento volume + Lavoro su intensità percepita (DURATA 8/12 sett.)",
+                weeks: 8,
+                exercises: [],
+                loaded: false
+            },
+            FASE3: {
+                title: "PROGRAMMA FASE 3: Lavoro tecnico + Ripresa accumulo volume (DURATA 8/10 sett.)",
+                weeks: 10,
+                exercises: [],
+                loaded: false
+            },
+            FASE4: {
+                title: "PROGRAMMA FASE 4: Lavoro tecnico + Intensificazione (DURATA 8/10 sett.)",
+                weeks: 10,
+                exercises: [],
+                loaded: false
+            },
+            FASE5: {
+                title: "PROGRAMMA FASE 5: Lavoro tecnico + Accumulo volume (DURATA 8/10 sett.)",
+                weeks: 10,
+                exercises: [],
+                loaded: false
+            },
+            FASE6: {
+                title: "PROGRAMMA FASE 6: Lavoro tecnico + Intensificazione (DURATA 10/12 sett.)",
+                weeks: 12,
+                exercises: [],
+                loaded: false
+            },
+            FASE7: {
+                title: "PROGRAMMA FASE 7: Lavoro tecnico + Accumulo volume (DURATA 10/12 sett.)",
+                weeks: 12,
+                exercises: [],
+                loaded: false
+            }
+        };
+
+        // Dati demo di fallback per FASE1 (per testing)
+        const demoDataFASE1 = {
+            exercises: [
                     {
                         id: 1,
                         muscleGroup: "Dorso",
@@ -442,11 +488,9 @@
                             6: { peso: "", rpe: "", commento: "3x50-47,5-47,5kg @10" },
                             7: { peso: "", rpe: "", commento: "3x50-47,5-47,5kg @10" },
                             8: { peso: "", rpe: "", commento: "3x50-50-47,5kg @10" }
-                        }
                     }
                 ]
             }
-            // Altre fasi possono essere aggiunte qui con struttura simile
         };
 
         let currentPhase = 'FASE1';
@@ -458,8 +502,8 @@
         });
 
         function initializeApp() {
-            generateWeekSelector();
-            renderWorkout();
+            updateSyncStatus('Caricamento iniziale...');
+            loadFromGoogleSheets();
             setupEventListeners();
         }
 
@@ -467,8 +511,14 @@
             document.getElementById('phaseSelect').addEventListener('change', function(e) {
                 currentPhase = e.target.value;
                 currentWeek = 1;
-                generateWeekSelector();
-                renderWorkout();
+                
+                // Carica i dati della nuova fase se non già caricati
+                if (!workoutData[currentPhase].loaded) {
+                    loadFromGoogleSheets();
+                } else {
+                    generateWeekSelector();
+                    renderWorkout();
+                }
             });
         }
 
@@ -497,8 +547,20 @@
             const container = document.getElementById('workoutContainer');
             const phase = workoutData[currentPhase];
             
-            if (!phase) {
-                container.innerHTML = '<div class="error">Fase non trovata. Seleziona una fase valida.</div>';
+            if (!phase || !phase.loaded || !phase.exercises || phase.exercises.length === 0) {
+                container.innerHTML = `
+                    <div class="loading">
+                        <h3>Caricamento ${currentPhase}...</h3>
+                        <p>Se il caricamento non si completa, verifica:</p>
+                        <ul style="text-align: left; max-width: 400px; margin: 0 auto;">
+                            <li>Che il foglio Google sia accessibile</li>
+                            <li>Che Apps Script sia autorizzato</li>
+                            <li>Che il foglio "${currentPhase}" esista</li>
+                        </ul>
+                        <button onclick="loadFromGoogleSheets()" class="save-btn" style="margin-top: 15px;">🔄 Riprova caricamento</button>
+                        <button onclick="useDemoData()" class="save-btn" style="margin-top: 15px; background: linear-gradient(45deg, #f56565, #e53e3e);">📋 Usa dati demo</button>
+                    </div>
+                `;
                 return;
             }
 
@@ -536,13 +598,13 @@
                         <h4>Settimana ${currentWeek} - ${exercise.objective}</h4>
                         <div class="input-group">
                             <input type="text" placeholder="Peso utilizzato" 
-                                   value="${exercise.weekData[currentWeek]?.peso || ''}"
+                                   value="${exercise.weekData && exercise.weekData[currentWeek] ? exercise.weekData[currentWeek].peso || '' : ''}"
                                    onchange="updateExerciseData(${exercise.id}, 'peso', this.value)">
                             <input type="text" placeholder="RPE (1-10)" 
-                                   value="${exercise.weekData[currentWeek]?.rpe || ''}"
+                                   value="${exercise.weekData && exercise.weekData[currentWeek] ? exercise.weekData[currentWeek].rpe || '' : ''}"
                                    onchange="updateExerciseData(${exercise.id}, 'rpe', this.value)">
                             <textarea placeholder="Commenti e note personali"
-                                     onchange="updateExerciseData(${exercise.id}, 'commento', this.value)">${exercise.weekData[currentWeek]?.commento || ''}</textarea>
+                                     onchange="updateExerciseData(${exercise.id}, 'commento', this.value)">${exercise.weekData && exercise.weekData[currentWeek] ? exercise.weekData[currentWeek].commento || '' : ''}</textarea>
                         </div>
                         <button class="save-btn" onclick="saveToGoogleSheets(${exercise.id})">
                             💾 Salva su Google Sheets
@@ -558,8 +620,105 @@
             const phase = workoutData[currentPhase];
             const exercise = phase.exercises.find(ex => ex.id === exerciseId);
             
-            if (exercise && exercise.weekData[currentWeek]) {
+            if (exercise) {
+                if (!exercise.weekData) exercise.weekData = {};
+                if (!exercise.weekData[currentWeek]) exercise.weekData[currentWeek] = {};
                 exercise.weekData[currentWeek][field] = value;
+                hasUnsavedChanges = true;
+            }
+        }
+
+        function saveToGoogleSheets(exerciseId) {
+            const exercise = workoutData[currentPhase].exercises.find(ex => ex.id === exerciseId);
+            const weekData = exercise.weekData ? exercise.weekData[currentWeek] : {};
+            
+            updateSyncStatus('Sincronizzazione in corso...');
+            
+            // Chiamata al Google Apps Script
+            const data = {
+                action: 'updateWorkoutData',
+                phase: currentPhase,
+                exerciseId: exerciseId,
+                week: currentWeek,
+                data: weekData
+            };
+
+            fetch(GOOGLE_SCRIPT_URL, {
+                method: 'POST',
+                body: JSON.stringify(data),
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    updateSyncStatus('✅ Dati salvati!');
+                    setTimeout(() => updateSyncStatus('Pronto per sincronizzazione'), 3000);
+                } else {
+                    throw new Error(result.error || 'Errore sconosciuto');
+                }
+            })
+            .catch(error => {
+                console.error('Errore salvataggio:', error);
+                updateSyncStatus('❌ Errore sincronizzazione');
+                setTimeout(() => updateSyncStatus('Pronto per sincronizzazione'), 3000);
+            });
+        }
+
+        function updateSyncStatus(message) {
+            document.getElementById('syncStatus').textContent = message;
+        }
+
+        // Funzione per caricare dati da Google Sheets
+        function loadFromGoogleSheets() {
+            updateSyncStatus('Caricamento dati...');
+            
+            const data = {
+                action: 'getWorkoutData',
+                phase: currentPhase
+            };
+
+            fetch(GOOGLE_SCRIPT_URL, {
+                method: 'POST',
+                body: JSON.stringify(data),
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success && result.exercises) {
+                    workoutData[currentPhase].exercises = result.exercises;
+                    workoutData[currentPhase].loaded = true;
+                    generateWeekSelector();
+                    renderWorkout();
+                    updateSyncStatus('✅ Dati caricati da Google Sheets');
+                } else {
+                    throw new Error(result.error || 'Nessun dato ricevuto');
+                }
+            })
+            .catch(error => {
+                console.error('Errore caricamento:', error);
+                updateSyncStatus('❌ Errore caricamento dati');
+                
+                // Se è FASE1 e fallisce, offri i dati demo
+                if (currentPhase === 'FASE1') {
+                    setTimeout(() => {
+                        updateSyncStatus('Modalità demo disponibile');
+                    }, 2000);
+                }
+            });
+        }
+
+        // Funzione per usare dati demo (solo per testing)
+        function useDemoData() {
+            if (currentPhase === 'FASE1') {
+                workoutData[currentPhase].exercises = demoDataFASE1.exercises;
+                workoutData[currentPhase].loaded = true;
+                generateWeekSelector();
+                renderWorkout();
+                updateSyncStatus('📋 Modalità demo attiva');
             }
         }
 
@@ -633,61 +792,44 @@
             }
         }
 
-        // Carica dati all'avvio
-        loadFromGoogleSheets();
-
-        // Auto-save ogni 30 secondi se ci sono modifiche
-        let hasUnsavedChanges = false;
-        let autoSaveInterval;
-
-        function startAutoSave() {
-            autoSaveInterval = setInterval(() => {
-                if (hasUnsavedChanges) {
-                    saveAllExercises();
-                    hasUnsavedChanges = false;
-                }
-            }, 30000);
-        }
-
-        function saveAllExercises() {
-            const exercises = workoutData[currentPhase].exercises;
-            exercises.forEach(exercise => {
-                if (exercise.weekData[currentWeek]) {
-                    saveToGoogleSheets(exercise.id);
-                }
-            });
-        }
-
-        // Avvia auto-save
-        startAutoSave();
-
-        // Gestione offline
-        function handleOfflineMode() {
-            if (!navigator.onLine) {
-                updateSyncStatus('📱 Modalità offline - i dati verranno sincronizzati quando tornerai online');
-            }
-        }
-
-        window.addEventListener('online', () => {
-            updateSyncStatus('🌐 Connessione ripristinata');
-            loadFromGoogleSheets();
-        });
-
-        window.addEventListener('offline', handleOfflineMode);
-    </script>
-
-    <!-- Google Apps Script Integration -->
-    <script>
-        // Codice da aggiungere come Apps Script in Google Sheets
-        const GOOGLE_APPS_SCRIPT_CODE = "https://script.google.com/macros/s/AKfycbz2Bel-Z5ZkReVnNckkSDBD9YYRtZOfBa8-54GRjCXJiakq8k-Oco7vRmNU-1tdOgO4SQ/exec"
+        // Aggiorna anche il Google Apps Script per gestire le richieste POST
+        const UPDATED_GOOGLE_APPS_SCRIPT_CODE = `
 /**
- * Codice Google Apps Script da inserire nel tuo foglio Google Sheets
- * 
- * 1. Apri il tuo foglio Google Sheets
- * 2. Vai su Estensioni > Apps Script
- * 3. Copia e incolla questo codice
- * 4. Salva e autorizza lo script
+ * Codice Google Apps Script AGGIORNATO - sostituisci il codice precedente
+ */
 
+function doGet(e) {
+  return HtmlService.createHtmlOutput(\`
+    <h1>Workout Tracker API</h1>
+    <p>API attiva e funzionante!</p>
+    <p>Parametri ricevuti: \${JSON.stringify(e.parameter)}</p>
+  \`);
+}
+
+function doPost(e) {
+  try {
+    const data = JSON.parse(e.postData.contents);
+    
+    switch(data.action) {
+      case 'getWorkoutData':
+        return ContentService
+          .createTextOutput(JSON.stringify(getWorkoutData(data.phase)))
+          .setMimeType(ContentService.MimeType.JSON);
+          
+      case 'updateWorkoutData':
+        return ContentService
+          .createTextOutput(JSON.stringify(updateWorkoutData(data.phase, data.exerciseId, data.week, data.data)))
+          .setMimeType(ContentService.MimeType.JSON);
+          
+      default:
+        throw new Error('Azione non riconosciuta: ' + data.action);
+    }
+  } catch (error) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ success: false, error: error.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
 
 function updateWorkoutData(phase, exerciseId, week, data) {
   try {
@@ -697,22 +839,19 @@ function updateWorkoutData(phase, exerciseId, week, data) {
     }
     
     // Trova la riga dell'esercizio basandosi sull'ID
-    const exerciseRow = findExerciseRow(sheet, exerciseId);
-    if (exerciseRow === -1) {
-      throw new Error('Esercizio non trovato');
-    }
+    const exerciseRow = exerciseId + 4; // exerciseId parte da 1, gli esercizi iniziano dalla riga 5
     
     // Calcola le colonne per la settimana specifica
     const weekStartCol = 9 + ((week - 1) * 4); // SETT.1 inizia dalla colonna I (9)
     
     // Aggiorna i dati
-    if (data.peso) {
+    if (data.peso !== undefined && data.peso !== null) {
       sheet.getRange(exerciseRow, weekStartCol + 1).setValue(data.peso); // Colonna Peso
     }
-    if (data.rpe) {
+    if (data.rpe !== undefined && data.rpe !== null) {
       sheet.getRange(exerciseRow, weekStartCol + 2).setValue(data.rpe); // Colonna RPE
     }
-    if (data.commento) {
+    if (data.commento !== undefined && data.commento !== null) {
       sheet.getRange(exerciseRow, weekStartCol + 3).setValue(data.commento); // Colonna Commento
     }
     
@@ -734,49 +873,64 @@ function getWorkoutData(phase) {
     const data = sheet.getDataRange().getValues();
     const exercises = [];
     
-    // Inizia dalla riga 5 (indice 4) dove iniziano gli esercizi
-    for (let i = 4; i < data.length; i++) {
+    // Trova la riga delle intestazioni (quella che contiene "GRUPPO MUSCOLARE")
+    let headerRowIndex = -1;
+    for (let i = 0; i < data.length; i++) {
+      if (data[i][0] === 'GRUPPO MUSCOLARE') {
+        headerRowIndex = i;
+        break;
+      }
+    }
+    
+    if (headerRowIndex === -1) {
+      throw new Error('Riga delle intestazioni non trovata');
+    }
+    
+    // Inizia dalla riga dopo le intestazioni
+    for (let i = headerRowIndex + 1; i < data.length; i++) {
       const row = data[i];
-      if (row[1]) { // Se c'è un nome esercizio nella colonna B
+      if (row[1] && row[1].toString().trim() !== '') { // Se c'è un nome esercizio nella colonna B
         const exercise = {
-          id: i - 3, // ID basato sulla posizione
-          muscleGroup: row[0] || '',
-          name: row[1],
-          notes: row[2] || '',
-          sets: row[3] || '',
-          reps: row[4] || '',
-          rest: row[5] || '',
-          load: row[6] || '',
-          objective: row[7] || '',
+          id: i - headerRowIndex, // ID basato sulla posizione relativa
+          muscleGroup: row[0] ? row[0].toString() : '',
+          name: row[1].toString(),
+          notes: row[2] ? row[2].toString() : '',
+          sets: row[3] ? row[3].toString() : '',
+          reps: row[4] ? row[4].toString() : '',
+          rest: row[5] ? row[5].toString() : '',
+          load: row[6] ? row[6].toString() : '',
+          objective: row[7] ? row[7].toString() : '',
           weekData: {}
         };
         
         // Estrae i dati delle settimane
-        for (let week = 1; week <= 8; week++) {
-          const weekStartCol = 8 + ((week - 1) * 4); // SETT.1 inizia dalla colonna I (8)
-          exercise.weekData[week] = {
-            peso: row[weekStartCol + 1] || '',
-            rpe: row[weekStartCol + 2] || '',
-            commento: row[weekStartCol + 3] || ''
-          };
+        // Conta quante settimane ci sono nelle intestazioni
+        const headerRow = data[headerRowIndex];
+        let weekCount = 0;
+        for (let col = 8; col < headerRow.length; col += 4) {
+          if (headerRow[col] && headerRow[col].toString().startsWith('SETT.')) {
+            weekCount++;
+            const weekNum = parseInt(headerRow[col].toString().replace('SETT.', ''));
+            exercise.weekData[weekNum] = {
+              peso: row[col + 1] ? row[col + 1].toString() : '',
+              rpe: row[col + 2] ? row[col + 2].toString() : '',
+              commento: row[col + 3] ? row[col + 3].toString() : ''
+            };
+          } else {
+            break; // Non ci sono più settimane
+          }
         }
         
         exercises.push(exercise);
       }
     }
     
-    return { exercises: exercises };
+    return { success: true, exercises: exercises, weekCount: weekCount };
     
   } catch (error) {
     console.error('Errore caricamento dati:', error);
-    return { error: error.toString() };
+    return { success: false, error: error.toString() };
   }
-}
-
-function findExerciseRow(sheet, exerciseId) {
-  // L'ID dell'esercizio corrisponde alla riga nel foglio
-  // exerciseId 1 = riga 5 (indice 4 + 1)
-  return exerciseId + 4;
 }
 
 // Funzione per aggiungere una nuova settimana dinamicamente
@@ -787,61 +941,64 @@ function addNewWeek(phase) {
       throw new Error('Foglio ' + phase + ' non trovato');
     }
     
+    const data = sheet.getDataRange().getValues();
+    
+    // Trova la riga delle intestazioni
+    let headerRowIndex = -1;
+    for (let i = 0; i < data.length; i++) {
+      if (data[i][0] === 'GRUPPO MUSCOLARE') {
+        headerRowIndex = i;
+        break;
+      }
+    }
+    
+    if (headerRowIndex === -1) {
+      throw new Error('Riga delle intestazioni non trovata');
+    }
+    
+    const headerRow = data[headerRowIndex];
     const lastCol = sheet.getLastColumn();
-    const headerRow = 4; // Riga delle intestazioni
     
     // Trova il numero della prossima settimana
-    const lastWeekHeader = sheet.getRange(headerRow, lastCol - 3).getValue();
-    const weekNumber = extractWeekNumber(lastWeekHeader) + 1;
+    let lastWeekNumber = 0;
+    for (let col = 8; col < headerRow.length; col += 4) {
+      if (headerRow[col] && headerRow[col].toString().startsWith('SETT.')) {
+        const weekNum = parseInt(headerRow[col].toString().replace('SETT.', ''));
+        if (weekNum > lastWeekNumber) {
+          lastWeekNumber = weekNum;
+        }
+      }
+    }
+    
+    const newWeekNumber = lastWeekNumber + 1;
     
     // Aggiungi le nuove colonne
     const newColStart = lastCol + 1;
-    sheet.getRange(headerRow, newColStart).setValue('SETT.' + weekNumber);
-    sheet.getRange(headerRow, newColStart + 1).setValue('Peso');
-    sheet.getRange(headerRow, newColStart + 2).setValue('RPE');
-    sheet.getRange(headerRow, newColStart + 3).setValue('Commento');
+    sheet.getRange(headerRowIndex + 1, newColStart).setValue('SETT.' + newWeekNumber);
+    sheet.getRange(headerRowIndex + 1, newColStart + 1).setValue('Peso');
+    sheet.getRange(headerRowIndex + 1, newColStart + 2).setValue('RPE');
+    sheet.getRange(headerRowIndex + 1, newColStart + 3).setValue('Commento');
     
-    return { success: true, weekNumber: weekNumber };
+    return { success: true, weekNumber: newWeekNumber };
     
   } catch (error) {
     console.error('Errore aggiunta settimana:', error);
     return { success: false, error: error.toString() };
   }
 }
-
-function extractWeekNumber(headerText) {
-  const match = headerText.match(/SETT\\.?(\\d+)/);
-  return match ? parseInt(match[1]) : 0;
-}
-
-// Funzione per il backup automatico
-function createBackup() {
-  try {
-    const sourceSpreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-    const backupName = 'Backup_' + sourceSpreadsheet.getName() + '_' + 
-                      Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd_HH-mm');
-    
-    const backup = sourceSpreadsheet.copy(backupName);
-    
-    // Sposta il backup in una cartella specifica (opzionale)
-    const backupFolder = DriveApp.getFoldersByName('Backup Allenamenti').next();
-    if (backupFolder) {
-      DriveApp.getFileById(backup.getId()).moveTo(backupFolder);
-    }
-    
-    return { success: true, backupId: backup.getId(), backupName: backupName };
-    
-  } catch (error) {
-    console.error('Errore creazione backup:', error);
-    return { success: false, error: error.toString() };
-  }
-}
         `;
-         */
-        // Mostra il codice in console per facile copia
-       //   console.log('=== CODICE GOOGLE APPS SCRIPT ===');
-       //   console.log(GOOGLE_APPS_SCRIPT_CODE);
-       //   console.log('=== FINE CODICE ===');
+        
+        // Mostra il codice aggiornato in console
+        console.log('=== CODICE GOOGLE APPS SCRIPT AGGIORNATO ===');
+        console.log(UPDATED_GOOGLE_APPS_SCRIPT_CODE);
+        console.log('=== FINE CODICE ===');
+    </script>
+
+    <!-- Google Apps Script Integration -->
+    <script>
+        // Codice da aggiungere come Apps Script in Google Sheets
+        const GOOGLE_APPS_SCRIPT_CODE = "https://script.google.com/macros/s/AKfycbxOyYFN6OtJaJTvi8KAQsm-UIAnr5wR0nBIi4ohxj7yBEA3ilWMtVqu3uAz_f6fd2jMtQ/exec"; 
+
     </script>
 </body>
 </html>
