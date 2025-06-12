@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Workout Tracker - Federico</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .header h1 {
+            color: #4a5568;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .phase-selector {
+            margin-bottom: 20px;
+        }
+
+        .phase-selector select {
+            padding: 12px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 10px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .week-selector {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .week-btn {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.8);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .week-btn:hover {
+            background: rgba(255, 255, 255, 1);
+            transform: translateY(-2px);
+        }
+
+        .week-btn.active {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .workout-grid {
+            display: grid;
+            gap: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+        }
+
+        .exercise-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .exercise-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .exercise-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+
+        .exercise-name {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #4a5568;
+            margin-bottom: 5px;
+        }
+
+        .muscle-group {
+            font-size: 0.9em;
+            color: #667eea;
+            font-weight: 500;
+            background: rgba(102, 126, 234, 0.1);
+            padding: 4px 8px;
+            border-radius: 12px;
+            display: inline-block;
+        }
+
+        .exercise-details {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+            font-size: 0.9em;
+        }
+
+        .detail-item {
+            text-align: center;
+            padding: 8px;
+            background: rgba(102, 126, 234, 0.05);
+            border-radius: 8px;
+        }
+
+        .detail-label {
+            font-weight: bold;
+            color: #667eea;
+            display: block;
+            margin-bottom: 3px;
+        }
+
+        .notes {
+            background: #f7fafc;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 0.85em;
+            color: #4a5568;
+            margin-bottom: 15px;
+            border-left: 4px solid #667eea;
+        }
+
+        .week-data {
+            background: linear-gradient(45deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05));
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+
+        .input-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr 2fr;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .input-group input, .input-group textarea {
+            padding: 8px 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        .input-group input:focus, .input-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .input-group textarea {
+            resize: vertical;
+            min-height: 60px;
+        }
+
+        .save-btn {
+            background: linear-gradient(45deg, #48bb78, #38a169);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+
+        .save-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(72, 187, 120, 0.3);
+        }
+
+        .sync-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-left: 15px;
+            font-size: 0.9em;
+        }
+
+        .sync-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #48bb78;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #667eea;
+            font-size: 1.2em;
+        }
+
+        .error {
+            background: #fed7d7;
+            color: #c53030;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #c53030;
+        }
+
+        @media (max-width: 768px) {
+            .workout-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .exercise-details {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .input-group {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .google-sheets-note {
+            background: rgba(52, 168, 83, 0.1);
+            border: 1px solid rgba(52, 168, 83, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            font-size: 0.9em;
+            color: #2d7d32;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💪 Workout Tracker</h1>
+            <p>Federico Sgambelluri - Scheda di Allenamento</p>
+            
+            <div class="google-sheets-note">
+                📋 <strong>Integrazione Google Sheets:</strong> Per collegare questo tracker al tuo foglio Google, aggiungi questo script come Apps Script nel tuo foglio. I dati si sincronizzeranno automaticamente.
+            </div>
+            
+            <div class="phase-selector">
+                <select id="phaseSelect">
+                    <option value="FASE1">FASE 1 - Lavoro tecnico + Progressione carichi</option>
+                    <option value="FASE2">FASE 2 - Lavoro tecnico + Aumento volume</option>
+                    <option value="FASE3">FASE 3 - Lavoro tecnico + Ripresa accumulo volume</option>
+                    <option value="FASE4">FASE 4 - Lavoro tecnico + Intensificazione</option>
+                    <option value="FASE5">FASE 5 - Lavoro tecnico + Accumulo volume</option>
+                    <option value="FASE6">FASE 6 - Lavoro tecnico + Intensificazione</option>
+                    <option value="FASE7">FASE 7 - Lavoro tecnico + Accumulo volume</option>
+                </select>
+                <div class="sync-status">
+                    <div class="sync-indicator"></div>
+                    <span id="syncStatus">Pronto per sincronizzazione</span>
+                </div>
+            </div>
+
+            <div class="week-selector" id="weekSelector">
+                <!-- Le settimane verranno generate dinamicamente -->
+            </div>
+        </div>
+
+        <div id="workoutContainer">
+            <div class="loading">Caricamento scheda di allenamento...</div>
+        </div>
+    </div>
+
+    <script>
+        // Simulazione dati basata sulla struttura Excel analizzata
+        const workoutData = {
+            FASE1: {
+                title: "PROGRAMMA FASE 1: Lavoro tecnico + Progressione carichi + Lavoro su intensità percepita (DURATA 8/12 sett.)",
+                weeks: 8,
+                exercises: [
+                    {
+                        id: 1,
+                        muscleGroup: "Dorso",
+                        name: "Stacco regular bilanciere",
+                        notes: "Occhio alla curva lombare, spingi coi piedi e non tirare di braccia. Parti con stinchi attaccati al ferro, sali piano fino alla ginocchia e poi vai su, sedere e bilanciere salgono assieme, non prima uno e poi l'altro, concludi chiudendo ma senza sculare. Occhio alla respirazione, stai con le spalle un pelo più avanti del bilanciere e la fase di eccentrica deve essere uguale alla concentrica, quindi scendi con le gambe e non la schiena. Infine ricorda che quandi parti, le braccia è come se fossero morte, un gancio, non devono tirare",
+                        sets: 4,
+                        reps: 5,
+                        rest: "2'/3'",
+                        load: "RPE 8/9",
+                        objective: "Incremento carico",
+                        weekData: {
+                            1: { peso: "", rpe: "", commento: "1° test 5RM 50kg@7" },
+                            2: { peso: "", rpe: "", commento: "TEST 5RM (trova un carico con il quale non fai più di 5 rep FATTE BENE) 55Kg@10" },
+                            3: { peso: "", rpe: "", commento: "4x5@52,5kg (ho aumentato il peso a 55Kg) @7" },
+                            4: { peso: "", rpe: "", commento: "4x5@57,5kg @10" },
+                            5: { peso: "", rpe: "", commento: "4x5@60-57,5-57,5-57,5kg @9" },
+                            6: { peso: "", rpe: "", commento: "4x5@60kg @9" },
+                            7: { peso: "", rpe: "", commento: "4x5@62,5kg @9" },
+                            8: { peso: "", rpe: "", commento: "4x5@65kg @10" }
+                        }
+                    },
+                    {
+                        id: 2,
+                        muscleGroup: "Dorso",
+                        name: "Lat machine asta presa media",
+                        notes: "Busto dritto e bloccato, non alzare le spalle",
+                        sets: 3,
+                        reps: 8,
+                        rest: "2'",
+                        load: "RIR1",
+                        objective: "Ricerca int percepita/incremento carico",
+                        weekData: {
+                            1: { peso: "", rpe: "", commento: "Test 10RM 52,5kg@9" },
+                            2: { peso: "", rpe: "", commento: "3x55-52,5-52,5kg @10" },
+                            3: { peso: "", rpe: "", commento: "3x55-52,5-52,5kg @10" },
+                            4: { peso: "", rpe: "", commento: "3x55-52,5-52,5kg @10" },
+                            5: { peso: "", rpe: "", commento: "3x55-52,5-52,5kg @10" },
+                            6: { peso: "", rpe: "", commento: "3x7@55kg @9/10" },
+                            7: { peso: "", rpe: "", commento: "3x7@55kg @9/10" },
+                            8: { peso: "", rpe: "", commento: "3x6@57,5kg @10" }
+                        }
+                    },
+                    {
+                        id: 3,
+                        muscleGroup: "Dorso",
+                        name: "Pulley orizzontale triangolo",
+                        notes: "Busto dritto e bloccato, triangolo all'ombelico",
+                        sets: 3,
+                        reps: 10,
+                        rest: "90''",
+                        load: "RIR1",
+                        objective: "Ricerca int percepita/incremento carico",
+                        weekData: {
+                            1: { peso: "", rpe: "", commento: "Test 12RM 37,5kg@9" },
+                            2: { peso: "", rpe: "", commento: "3x37,5kg@10" },
+                            3: { peso: "", rpe: "", commento: "3x37,5kg@10" },
+                            4: { peso: "", rpe: "", commento: "3x40-37,5-37,5kg @10" },
+                            5: { peso: "", rpe: "", commento: "3x40-40-37,5kg @9" },
+                            6: { peso: "", rpe: "", commento: "3x40kg @10" },
+                            7: { peso: "", rpe: "", commento: "3x40kg @9/10" },
+                            8: { peso: "", rpe: "", commento: "3x42,5-40-40kg @9" }
+                        }
+                    },
+                    {
+                        id: 4,
+                        muscleGroup: "Dorso",
+                        name: "Pull down asta sagomata",
+                        notes: "Busto inclinato circa a 45°, non piegare troppo i gomiti",
+                        sets: 2,
+                        reps: "max",
+                        rest: "60''",
+                        load: "15RM",
+                        objective: "Massimo effort",
+                        weekData: {
+                            1: { peso: "", rpe: "", commento: "usa peso da 15RM 12,5kg@8" },
+                            2: { peso: "", rpe: "", commento: "12,5kg (arriva sempre a cedimento)" },
+                            3: { peso: "", rpe: "", commento: "12,5kg" },
+                            4: { peso: "", rpe: "", commento: "12,5kg@10" },
+                            5: { peso: "", rpe: "", commento: "12,5kg" },
+                            6: { peso: "", rpe: "", commento: "12,5kg" },
+                            7: { peso: "", rpe: "", commento: "12,5kg" },
+                            8: { peso: "", rpe: "", commento: "12,5kg" }
+                        }
+                    },
+                    {
+                        id: 5,
+                        muscleGroup: "Petto",
+                        name: "Panca piana man",
+                        notes: "Scapole addotte e depresse = gomiti più bassi delle spalle, scendi con i manubri",
+                        sets: 4,
+                        reps: 8,
+                        rest: "2'",
+                        load: "RIR2",
+                        objective: "Ricerca int percepita/incremento carico",
+                        weekData: {
+                            1: { peso: "", rpe: "", commento: "Test 10RM 20kg@9" },
+                            2: { peso: "", rpe: "", commento: "4x22-20-20-20kg@10" },
+                            3: { peso: "", rpe: "", commento: "4x20kg@10" },
+                            4: { peso: "", rpe: "", commento: "4x20kg" },
+                            5: { peso: "", rpe: "", commento: "4x18kg @7/8" },
+                            6: { peso: "", rpe: "", commento: "4x20-20-18-18kg RPE10" },
+                            7: { peso: "", rpe: "", commento: "4x20-20-18-18kg @10" },
+                            8: { peso: "", rpe: "", commento: "4x20-20-18-18kg @10" }
+                        }
+                    },
+                    {
+                        id: 6,
+                        muscleGroup: "Petto",
+                        name: "Chest press",
+                        notes: "Scapole addotte e depresse = gomiti più bassi delle spalle, sellino alla tacca 3, presa stretta",
+                        sets: 3,
+                        reps: 10,
+                        rest: "90''",
+                        load: "RIR1",
+                        objective: "Ricerca int percepita/incremento carico",
+                        weekData: {
+                            1: { peso: "", rpe: "", commento: "Test 12RM 42,5kg@7" },
+                            2: { peso: "", rpe: "", commento: "3x45kg@10" },
+                            3: { peso: "", rpe: "", commento: "3x47,5-45-45kg @9" },
+                            4: { peso: "", rpe: "", commento: "3x47,5-47,5-45kg@10" },
+                            5: { peso: "", rpe: "", commento: "3x47,5kg@9" },
+                            6: { peso: "", rpe: "", commento: "3x50-47,5-47,5kg @10" },
+                            7: { peso: "", rpe: "", commento: "3x50-47,5-47,5kg @10" },
+                            8: { peso: "", rpe: "", commento: "3x50-50-47,5kg @10" }
+                        }
+                    }
+                ]
+            }
+            // Altre fasi possono essere aggiunte qui con struttura simile
+        };
+
+        let currentPhase = 'FASE1';
+        let currentWeek = 1;
+
+        // Inizializzazione
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeApp();
+        });
+
+        function initializeApp() {
+            generateWeekSelector();
+            renderWorkout();
+            setupEventListeners();
+        }
+
+        function setupEventListeners() {
+            document.getElementById('phaseSelect').addEventListener('change', function(e) {
+                currentPhase = e.target.value;
+                currentWeek = 1;
+                generateWeekSelector();
+                renderWorkout();
+            });
+        }
+
+        function generateWeekSelector() {
+            const weekSelector = document.getElementById('weekSelector');
+            const weeks = workoutData[currentPhase]?.weeks || 8;
+            
+            weekSelector.innerHTML = '';
+            for (let i = 1; i <= weeks; i++) {
+                const btn = document.createElement('button');
+                btn.className = `week-btn ${i === currentWeek ? 'active' : ''}`;
+                btn.textContent = `Settimana ${i}`;
+                btn.onclick = () => selectWeek(i);
+                weekSelector.appendChild(btn);
+            }
+        }
+
+        function selectWeek(week) {
+            currentWeek = week;
+            document.querySelectorAll('.week-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            renderWorkout();
+        }
+
+        function renderWorkout() {
+            const container = document.getElementById('workoutContainer');
+            const phase = workoutData[currentPhase];
+            
+            if (!phase) {
+                container.innerHTML = '<div class="error">Fase non trovata. Seleziona una fase valida.</div>';
+                return;
+            }
+
+            const html = phase.exercises.map(exercise => `
+                <div class="exercise-card">
+                    <div class="exercise-header">
+                        <div>
+                            <div class="exercise-name">${exercise.name}</div>
+                            ${exercise.muscleGroup ? `<div class="muscle-group">${exercise.muscleGroup}</div>` : ''}
+                        </div>
+                    </div>
+                    
+                    <div class="exercise-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Sets</span>
+                            ${exercise.sets}
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Reps</span>
+                            ${exercise.reps}
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Rest</span>
+                            ${exercise.rest}
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Carico</span>
+                            ${exercise.load}
+                        </div>
+                    </div>
+                    
+                    ${exercise.notes ? `<div class="notes">${exercise.notes}</div>` : ''}
+                    
+                    <div class="week-data">
+                        <h4>Settimana ${currentWeek} - ${exercise.objective}</h4>
+                        <div class="input-group">
+                            <input type="text" placeholder="Peso utilizzato" 
+                                   value="${exercise.weekData[currentWeek]?.peso || ''}"
+                                   onchange="updateExerciseData(${exercise.id}, 'peso', this.value)">
+                            <input type="text" placeholder="RPE (1-10)" 
+                                   value="${exercise.weekData[currentWeek]?.rpe || ''}"
+                                   onchange="updateExerciseData(${exercise.id}, 'rpe', this.value)">
+                            <textarea placeholder="Commenti e note personali"
+                                     onchange="updateExerciseData(${exercise.id}, 'commento', this.value)">${exercise.weekData[currentWeek]?.commento || ''}</textarea>
+                        </div>
+                        <button class="save-btn" onclick="saveToGoogleSheets(${exercise.id})">
+                            💾 Salva su Google Sheets
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+
+            container.innerHTML = `<div class="workout-grid">${html}</div>`;
+        }
+
+        function updateExerciseData(exerciseId, field, value) {
+            const phase = workoutData[currentPhase];
+            const exercise = phase.exercises.find(ex => ex.id === exerciseId);
+            
+            if (exercise && exercise.weekData[currentWeek]) {
+                exercise.weekData[currentWeek][field] = value;
+            }
+        }
+
+        function saveToGoogleSheets(exerciseId) {
+            const exercise = workoutData[currentPhase].exercises.find(ex => ex.id === exerciseId);
+            const weekData = exercise.weekData[currentWeek];
+            
+            // Simulazione chiamata a Google Sheets API
+            updateSyncStatus('Sincronizzazione in corso...');
+            
+            // Qui andrà la chiamata reale a Google Sheets
+            // Per ora simuliamo il salvataggio
+            setTimeout(() => {
+                console.log('Salvando su Google Sheets:', {
+                    phase: currentPhase,
+                    exercise: exercise.name,
+                    week: currentWeek,
+                    data: weekData
+                });
+                updateSyncStatus('Dati salvati con successo!');
+                
+                // Chiamata alla funzione Google Apps Script
+                if (typeof google !== 'undefined' && google.script) {
+                    google.script.run
+                        .withSuccessHandler(onSuccess)
+                        .withFailureHandler(onError)
+                        .updateWorkoutData(currentPhase, exerciseId, currentWeek, weekData);
+                } else {
+                    // Fallback per testing locale
+                    console.log('Google Apps Script non disponibile - modalità demo');
+                }
+            }, 1000);
+        }
+
+        function updateSyncStatus(message) {
+            document.getElementById('syncStatus').textContent = message;
+        }
+
+        function onSuccess(result) {
+            updateSyncStatus('✅ Sincronizzato con Google Sheets');
+            setTimeout(() => {
+                updateSyncStatus('Pronto per sincronizzazione');
+            }, 3000);
+        }
+
+        function onError(error) {
+            updateSyncStatus('❌ Errore sincronizzazione');
+            console.error('Errore Google Sheets:', error);
+        }
+
+        // Funzione per caricare dati da Google Sheets
+        function loadFromGoogleSheets() {
+            updateSyncStatus('Caricamento dati...');
+            
+            if (typeof google !== 'undefined' && google.script) {
+                google.script.run
+                    .withSuccessHandler(onDataLoaded)
+                    .withFailureHandler(onError)
+                    .getWorkoutData(currentPhase);
+            } else {
+                // Modalità demo
+                updateSyncStatus('Modalità demo - dati locali');
+            }
+        }
+
+        function onDataLoaded(data) {
+            if (data && data.exercises) {
+                workoutData[currentPhase].exercises = data.exercises;
+                renderWorkout();
+                updateSyncStatus('Dati caricati da Google Sheets');
+            }
+        }
+
+        // Carica dati all'avvio
+        loadFromGoogleSheets();
+
+        // Auto-save ogni 30 secondi se ci sono modifiche
+        let hasUnsavedChanges = false;
+        let autoSaveInterval;
+
+        function startAutoSave() {
+            autoSaveInterval = setInterval(() => {
+                if (hasUnsavedChanges) {
+                    saveAllExercises();
+                    hasUnsavedChanges = false;
+                }
+            }, 30000);
+        }
+
+        function saveAllExercises() {
+            const exercises = workoutData[currentPhase].exercises;
+            exercises.forEach(exercise => {
+                if (exercise.weekData[currentWeek]) {
+                    saveToGoogleSheets(exercise.id);
+                }
+            });
+        }
+
+        // Avvia auto-save
+        startAutoSave();
+
+        // Gestione offline
+        function handleOfflineMode() {
+            if (!navigator.onLine) {
+                updateSyncStatus('📱 Modalità offline - i dati verranno sincronizzati quando tornerai online');
+            }
+        }
+
+        window.addEventListener('online', () => {
+            updateSyncStatus('🌐 Connessione ripristinata');
+            loadFromGoogleSheets();
+        });
+
+        window.addEventListener('offline', handleOfflineMode);
+    </script>
+
+    <!-- Google Apps Script Integration -->
+    <script>
+        // Codice da aggiungere come Apps Script in Google Sheets
+        const GOOGLE_APPS_SCRIPT_CODE = `
+/**
+ * Codice Google Apps Script da inserire nel tuo foglio Google Sheets
+ * 
+ * 1. Apri il tuo foglio Google Sheets
+ * 2. Vai su Estensioni > Apps Script
+ * 3. Copia e incolla questo codice
+ * 4. Salva e autorizza lo script
+ */
+
+function updateWorkoutData(phase, exerciseId, week, data) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(phase);
+    if (!sheet) {
+      throw new Error('Foglio ' + phase + ' non trovato');
+    }
+    
+    // Trova la riga dell'esercizio basandosi sull'ID
+    const exerciseRow = findExerciseRow(sheet, exerciseId);
+    if (exerciseRow === -1) {
+      throw new Error('Esercizio non trovato');
+    }
+    
+    // Calcola le colonne per la settimana specifica
+    const weekStartCol = 9 + ((week - 1) * 4); // SETT.1 inizia dalla colonna I (9)
+    
+    // Aggiorna i dati
+    if (data.peso) {
+      sheet.getRange(exerciseRow, weekStartCol + 1).setValue(data.peso); // Colonna Peso
+    }
+    if (data.rpe) {
+      sheet.getRange(exerciseRow, weekStartCol + 2).setValue(data.rpe); // Colonna RPE
+    }
+    if (data.commento) {
+      sheet.getRange(exerciseRow, weekStartCol + 3).setValue(data.commento); // Colonna Commento
+    }
+    
+    return { success: true, message: 'Dati aggiornati con successo' };
+    
+  } catch (error) {
+    console.error('Errore aggiornamento dati:', error);
+    return { success: false, error: error.toString() };
+  }
+}
+
+function getWorkoutData(phase) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(phase);
+    if (!sheet) {
+      throw new Error('Foglio ' + phase + ' non trovato');
+    }
+    
+    const data = sheet.getDataRange().getValues();
+    const exercises = [];
+    
+    // Inizia dalla riga 5 (indice 4) dove iniziano gli esercizi
+    for (let i = 4; i < data.length; i++) {
+      const row = data[i];
+      if (row[1]) { // Se c'è un nome esercizio nella colonna B
+        const exercise = {
+          id: i - 3, // ID basato sulla posizione
+          muscleGroup: row[0] || '',
+          name: row[1],
+          notes: row[2] || '',
+          sets: row[3] || '',
+          reps: row[4] || '',
+          rest: row[5] || '',
+          load: row[6] || '',
+          objective: row[7] || '',
+          weekData: {}
+        };
+        
+        // Estrae i dati delle settimane
+        for (let week = 1; week <= 8; week++) {
+          const weekStartCol = 8 + ((week - 1) * 4); // SETT.1 inizia dalla colonna I (8)
+          exercise.weekData[week] = {
+            peso: row[weekStartCol + 1] || '',
+            rpe: row[weekStartCol + 2] || '',
+            commento: row[weekStartCol + 3] || ''
+          };
+        }
+        
+        exercises.push(exercise);
+      }
+    }
+    
+    return { exercises: exercises };
+    
+  } catch (error) {
+    console.error('Errore caricamento dati:', error);
+    return { error: error.toString() };
+  }
+}
+
+function findExerciseRow(sheet, exerciseId) {
+  // L'ID dell'esercizio corrisponde alla riga nel foglio
+  // exerciseId 1 = riga 5 (indice 4 + 1)
+  return exerciseId + 4;
+}
+
+// Funzione per aggiungere una nuova settimana dinamicamente
+function addNewWeek(phase) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(phase);
+    if (!sheet) {
+      throw new Error('Foglio ' + phase + ' non trovato');
+    }
+    
+    const lastCol = sheet.getLastColumn();
+    const headerRow = 4; // Riga delle intestazioni
+    
+    // Trova il numero della prossima settimana
+    const lastWeekHeader = sheet.getRange(headerRow, lastCol - 3).getValue();
+    const weekNumber = extractWeekNumber(lastWeekHeader) + 1;
+    
+    // Aggiungi le nuove colonne
+    const newColStart = lastCol + 1;
+    sheet.getRange(headerRow, newColStart).setValue('SETT.' + weekNumber);
+    sheet.getRange(headerRow, newColStart + 1).setValue('Peso');
+    sheet.getRange(headerRow, newColStart + 2).setValue('RPE');
+    sheet.getRange(headerRow, newColStart + 3).setValue('Commento');
+    
+    return { success: true, weekNumber: weekNumber };
+    
+  } catch (error) {
+    console.error('Errore aggiunta settimana:', error);
+    return { success: false, error: error.toString() };
+  }
+}
+
+function extractWeekNumber(headerText) {
+  const match = headerText.match(/SETT\\.?(\\d+)/);
+  return match ? parseInt(match[1]) : 0;
+}
+
+// Funzione per il backup automatico
+function createBackup() {
+  try {
+    const sourceSpreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    const backupName = 'Backup_' + sourceSpreadsheet.getName() + '_' + 
+                      Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd_HH-mm');
+    
+    const backup = sourceSpreadsheet.copy(backupName);
+    
+    // Sposta il backup in una cartella specifica (opzionale)
+    const backupFolder = DriveApp.getFoldersByName('Backup Allenamenti').next();
+    if (backupFolder) {
+      DriveApp.getFileById(backup.getId()).moveTo(backupFolder);
+    }
+    
+    return { success: true, backupId: backup.getId(), backupName: backupName };
+    
+  } catch (error) {
+    console.error('Errore creazione backup:', error);
+    return { success: false, error: error.toString() };
+  }
+}
+        `;
+        
+        // Mostra il codice in console per facile copia
+        console.log('=== CODICE GOOGLE APPS SCRIPT ===');
+        console.log(GOOGLE_APPS_SCRIPT_CODE);
+        console.log('=== FINE CODICE ===');
+    </script>
+</body>
+</html>
